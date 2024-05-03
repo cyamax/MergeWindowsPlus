@@ -1,62 +1,46 @@
-// windowsが切り替わったとときに発火
-function movelisten(){
-  chrome.windows.getAll({"populate" : true},changepop);
+let targetWindow = null;
+let tabCount = 0;
+
+function updateBadgeOnTabChange() {
+  chrome.windows.getAll({"populate": true}, updateBadgeTextForWindows);
 }
 
-function changepop(windows){
-  //console.log(windows.length);
+function updateBadgeTextForWindows(windows) {
   if (windows.length > 1) {
-    chrome.browserAction.setBadgeText({text:String(windows.length)});
-  }else{
-    chrome.browserAction.setBadgeText({text:""});
+    chrome.action.setBadgeText({text: String(windows.length)});
+  } else {
+    chrome.action.setBadgeText({text: ""});
   }
 }
 
-
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
-var targetWindow = null;
-var tabCount = 0;
-
-function start(tab) {
-  chrome.windows.getCurrent(getWindows);
+function handleActionClick() {
+  chrome.windows.getCurrent((win) => {
+    targetWindow = win;
+    chrome.tabs.query({windowId: targetWindow.id}, (tabs) => {
+      tabCount = tabs.length;
+      chrome.windows.getAll({"populate": true}, moveTabsToCurrentWindow);
+    });
+  });
 }
 
-function getWindows(win) {
-  targetWindow = win;
-  chrome.tabs.getAllInWindow(targetWindow.id, getTabs);
-}
-
-function getTabs(tabs) {
-  tabCount = tabs.length;
-  // We require all the tab information to be populated.
-  chrome.windows.getAll({"populate" : true}, moveTabs);
-}
-
-function moveTabs(windows) {
-  var numWindows = windows.length;
-  var tabPosition = tabCount;
-  for (var i = 0; i < numWindows; i++) {
-    var win = windows[i];
-
-    if (targetWindow.id != win.id) {
-      var numTabs = win.tabs.length;
-
-      for (var j = 0; j < numTabs; j++) {
-        var tab = win.tabs[j];
-        // Move the tab into the window that triggered the browser action.
-        chrome.tabs.move(tab.id,
-            {"windowId": targetWindow.id, "index": tabPosition});
-        tabPosition++;
+function moveTabsToCurrentWindow(windows) {
+  let numWindows = windows.length;
+  let tabPosition = tabCount;
+  for (let i = 0; i < numWindows; i++) {
+    let win = windows[i];
+    if (targetWindow.id !== win.id) {
+      let numTabs = win.tabs.length;
+      for (let j = 0; j < numTabs; j++) {
+        let tab = win.tabs[j];
+        chrome.tabs.move(tab.id, {
+          windowId: targetWindow.id,
+          index: tabPosition++
+        });
       }
     }
   }
-
-  chrome.browserAction.setBadgeText({text:""});
+  chrome.action.setBadgeText({text: ""});
 }
 
-// Set up a click handler so that we can merge all the windows.
-chrome.browserAction.onClicked.addListener(start);
-
-chrome.tabs.onActivated.addListener(movelisten); 
+chrome.action.onClicked.addListener(handleActionClick);
+chrome.tabs.onActivated.addListener(updateBadgeOnTabChange);
