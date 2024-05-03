@@ -1,11 +1,11 @@
 let targetWindow = null;
 let tabCount = 0;
 
-function movelisten() {
-  chrome.windows.getAll({"populate": true}, changepop);
+function updateBadgeOnTabChange() {
+  chrome.windows.getAll({"populate": true}, updateBadgeTextForWindows);
 }
 
-function changepop(windows) {
+function updateBadgeTextForWindows(windows) {
   if (windows.length > 1) {
     chrome.action.setBadgeText({text: String(windows.length)});
   } else {
@@ -13,17 +13,17 @@ function changepop(windows) {
   }
 }
 
-function start() {
+function handleActionClick() {
   chrome.windows.getCurrent((win) => {
     targetWindow = win;
     chrome.tabs.query({windowId: targetWindow.id}, (tabs) => {
       tabCount = tabs.length;
-      chrome.windows.getAll({"populate": true}, moveTabs);
+      chrome.windows.getAll({"populate": true}, moveTabsToCurrentWindow);
     });
   });
 }
 
-function moveTabs(windows) {
+function moveTabsToCurrentWindow(windows) {
   let numWindows = windows.length;
   let tabPosition = tabCount;
   for (let i = 0; i < numWindows; i++) {
@@ -42,5 +42,5 @@ function moveTabs(windows) {
   chrome.action.setBadgeText({text: ""});
 }
 
-chrome.action.onClicked.addListener(start);
-chrome.tabs.onActivated.addListener(movelisten);
+chrome.action.onClicked.addListener(handleActionClick);
+chrome.tabs.onActivated.addListener(updateBadgeOnTabChange);
